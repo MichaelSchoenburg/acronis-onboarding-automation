@@ -188,33 +188,28 @@ try {
 
     $Script:Section = 'API'
 
-    Log "Issuing API access token..."
-
     # Issue token to access API
-    $ApiToken = Get-Token -Url $BaseUrl -ApiClientId $ApiClientId -ApiClientSecret $ApiClientSecret
+    Log "Issuing API access token..."
+    $ApiToken = Get-Token -Url $Url -ApiClientId $ApiClientId -ApiClientSecret $ApiClientSecret
     $ApiAccessToken = $ApiToken.access_token
 
-    Log "Constructing bearer..."
-
     # Manually construct Bearer
+    Log "Constructing bearer..."
     $bearerAuthValue = "Bearer $ApiAccessToken"
     $headers = @{ "Authorization" = $bearerAuthValue }
 
-    Log "Constructing headers..."
-
     # The request contains body with JSON
+    Log "Constructing headers..."
     $headers.Add("Content-Type", "application/json")
     $headers.Add("User-Agent", "ACP 3.0/Acronis Cyber Platform PowerShell Examples")
 
-    Log "Reading own tenant ID..."
-
     # Get own tenant ID
+    Log "Reading own tenant ID..."
     $apiClientInfo = Invoke-RestMethod -Uri "$($Url)/clients/$($ApiClientId)" -Headers $headers
     $tenantId = $apiClientInfo.tenant_id
 
-    Log "Reading customer tenant ID..."
-
     # Get customer tenant ID
+    Log "Reading customer tenant ID..."
     $pagingParams = @{tenant = $tenantId; text = $customerTenantName}
     $searchResult = Invoke-RestMethod -Uri "$($Url)/search" -Headers $headers -Body $pagingParams
 
