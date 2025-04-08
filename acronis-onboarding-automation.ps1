@@ -148,10 +148,10 @@ function Get-Token {
 #endregion FUNCTIONS
 #region INITIALIZATION
 <# 
-    Libraries, Modules, ...
+    Libraries, Modules, 
 #>
 
-# Nothing to initialize this time...
+# Nothing to initialize this time
 
 #endregion INITIALIZATION
 #region DECLARATIONS
@@ -166,7 +166,6 @@ function Get-Token {
 <# 
 
 $CustomerTenantName = "Test-Tenant"
-$BaseUrl = 'https://portal.centerbackup.one/'
 $Url = 'https://portal.centerbackup.one/api/2' # The full URL for your Acronis tenant (plugging Ajani right here)
 $ApiClientId = '02baa9be-f1a2-4624-a95b-0cx75c9acb61' # API client ID
 $ApiClientSecret = 'mzrop4shdxil3ud4lvvwdn5l6acqtauufi4juudqabfhxga756pm' # API client secret
@@ -189,27 +188,114 @@ try {
     $Script:Section = 'API'
 
     # Issue token to access API
-    Log "Issuing API access token..."
+    Log "Issuing API access token"
     $ApiToken = Get-Token -Url $Url -ApiClientId $ApiClientId -ApiClientSecret $ApiClientSecret
     $ApiAccessToken = $ApiToken.access_token
 
     # Manually construct Bearer
-    Log "Constructing bearer..."
+    Log "Constructing bearer"
     $bearerAuthValue = "Bearer $ApiAccessToken"
     $headers = @{ "Authorization" = $bearerAuthValue }
 
     # The request contains body with JSON
-    Log "Constructing headers..."
+    Log "Constructing headers"
     $headers.Add("Content-Type", "application/json")
-    $headers.Add("User-Agent", "ACP 3.0/Acronis Cyber Platform PowerShell Examples")
+    $headers.Add("User-Agent", "Acronis Onboarding Automation PowerShell Script")
 
     # Get own tenant ID
-    Log "Reading own tenant ID..."
+    Log "Reading own tenant ID"
     $apiClientInfo = Invoke-RestMethod -Uri "$($Url)/clients/$($ApiClientId)" -Headers $headers
     $tenantId = $apiClientInfo.tenant_id
 
-    # Get customer tenant ID
-    Log "Reading customer tenant ID..."
+    # Create customer tenant
+    $customerTenatName          = 'Test-Tenant'                 # The tenant name.
+    $types                      = 'billing', 'management'       # Types of the contact. May be one of the following values: legal, primary, billing, technical, management.
+    $country                    = 'DE'                          # Organization’s country.
+    $state                      = 'Nordrhein-Westfalen'         # Organization’s state.
+    $zipcode                    = '53842'                       # Organization’s zip code.
+    $city                       = 'Troisdorf'                   # Organization’s city.
+    $address1                   = 'Heidegraben 4a'              # Address line 1.
+    $address2                   = ''                            # Address line 2.
+    $representativeFirstname    = 'Stephan'                     # The first name of the organization’s representative.
+    $representativeLastname     = 'Engels'                      # The last name of the organization’s representative.
+    $representativeTitle        = 'Geschäftsführer'             # A job title of the organization’s representative.
+    $industry                   = 'IT-Dienstleistung'           # The name of the industry that identifies the primary business activities of the organization.
+    $organizationSize           = '1-10'                        # Total number of employees in the organization. May be one of the following values: 1-10, 11-100, 101-500, 501-1000, 5000+. # Somehow doesn't work
+    $website                    = 'https://www.itc-engels.de'   # A URL of the organization’s website.
+    $eMailAddress               = 'support@itc-engels.de'       # An email address that will be used for account activation and service notifications.
+    $phone                      = '+49 2246 92600 - 0'          # Organization’s phone number.
+
+    $json = @{
+        name                =  $customerTenatName   # The tenant name.
+        kind                = 'customer'            # The tenant type. The value can be partner, folder, customer, or unit. Set to unit for personal tenants.
+        parent_id           = $tenantId             # The UUID of a tenant where this tenant is created.
+        language            = 'de'                  # The default language of notifications, reports, and the software that is used within the tenant. For the list of supported values, see Supported language codes.
+        version             = 1                     # The revision number of the tenant. Each update of the tenant increases this number.
+        contact = @{
+            types               = $types
+            country             = $country
+            state               = $state
+            zipcode             = $zipcode
+            city                = $city
+            address1            = $address1
+            address2            = $address2
+            firstname           = $representativeFirstname
+            lastname            = $representativeLastname
+            title               = $representativeTitle
+            industry            = $industry
+            organization_site   = $organizationSize
+            website             = $website
+            email               = $eMailAddress
+            phone               = $phone
+        } # The legal contact information of the organization.
+        contacts = $null # An array of user contact objects that were created in the tenant. Only returned in GET /tenants endpoint. # Somehow never works...
+    }
+    $tenant = $json | ConvertTo-Json
+
+    $response = Invoke-RestMethod -Method Post -Uri "$($Url)/tenants" -Headers $headers -Body $tenant
+    
+    $customerTenantId = $response.id
+
+    <#
+
+    # Tenant auslesen
+    $tenantId = 'c290e1c6-ce36-4066-8fc5-8ada52f0a19f'
+    $myTenant = Invoke-RestMethod -Uri "$($Url)/tenants/$($tenantId)" -Headers $headers
+
+    # Mehrere Tenants auslesen
+    $array = 'c2a0e1c6-ce36-4066-8dc5-9ada52f0a19f', 'a7af0d7f-a59c-454f-8df9-606f2d436726'
+    $tenantIds = $array -join ','
+    $pagingParams = @{uuids = $tenantIds}
+    $searchResult = Invoke-RestMethod -Uri "$($Url)/tenants" -Headers $headers -Body $pagingParams
+    $searchResult.items | Out-GridView
+
+    # Einzelnen Tenant modifizieren
+    $json = @{
+        version = $myTenant.version
+        contact = @{
+            types = $types
+            country = $country
+            state = $state
+            zipcode = $zipcode
+            city = $city
+            address1 = $address1
+            address2 = $address2
+            firstname = $representativeFirstname
+            lastname = $representativeLastname
+            title = $representativeTitle
+            industry = $industry
+            organization_site = $organizationSize
+            website = $website
+            email = $eMailAddress
+            phone = $phone
+        }
+        contacts = $null # Somehow doesn't work
+    }
+    $tenant = $json | ConvertTo-Json
+    $response = Invoke-RestMethod -Method Put -Uri "$($Url)/tenants/c2a0e1c6-ce39-4046-8fd5-8adb52f0b18f" -Headers $headers -Body $tenant
+
+    # Search tenant
+    Log "Reading customer tenant ID"
     $pagingParams = @{tenant = $tenantId; text = $customerTenantName}
     $searchResult = Invoke-RestMethod -Uri "$($Url)/search" -Headers $headers -Body $pagingParams
 
@@ -223,6 +309,8 @@ try {
 
     Log "Found tenant '$($customerTenant.name)' at path '$($customerTenant.path)' with ID '$($customerTenantId)'."
 
+    #>
+
     # Get services
     $servicesGeneral = (Invoke-RestMethod -Uri "$($Url)/applications" -Headers $headers).items
 
@@ -231,8 +319,9 @@ try {
     $servicesGeneral.Where({ $_.id -in $servicesForTenant }) | Select-Object Name, Id
 
     # Define which services to set
+    $Service_CyberProtectionId = "6e6d758d-8e74-3ae3-ac84-50eb0dff12eb"
     $ServicesToSet = @(
-        "6e6d758d-8e74-3ae3-ac84-50eb0dff12eb" # Cyber Protection
+        $Service_CyberProtection
     )
 
     # Set services
@@ -246,7 +335,7 @@ try {
 
     # Get offering items
     $offeringItems = (Invoke-RestMethod -Method Get -Uri "$($Url)/tenants/$($customerTenantId)/offering_items" -Headers $headers).items
-    
+
     # Activate offering item "local_storage"
     for ($i = 0; $i -lt $offeringItems.Count; $i++) {
         Log "$($offeringItems[$i].name) - $($offeringItems[$i].status)"
@@ -260,7 +349,21 @@ try {
     }
     $json = $json | ConvertTo-Json
 
-    $result = Invoke-RestMethod -Method Put -Uri "$($Url)/tenants/$($customerTenantId)/offering_items" -Headers $headers -Body $json
+    $response = Invoke-RestMethod -Method Put -Uri "$($Url)/tenants/$($customerTenantId)/offering_items" -Headers $headers -Body $json
+
+    <# 
+
+    # Set billing mode -- Doesn't work...
+    $json = @{
+        'value' = 'per_device'
+    }
+    $json = $json | ConvertTo-Json
+    Invoke-RestMethod -Method Put -Uri "$($Url)/applications/$($Service_CyberProtectionId)/settings/tenants/$($customerTenantId)/licensing_mode" -Headers $headers -Body $json
+
+    # Alle für den Tenant verfügbaren Settings auslesen
+    $response = Invoke-RestMethod -Method Get -Uri "$($Url)/applications/$($Service_CyberProtectionId)/settings/tenants/$($customerTenantId)" -Headers $headers
+
+    #>
 } catch {
     Log "Exception Message: $($PSItem.Exception.Message)"
     Log "Inner Exception Message: $($PSItem.Exception.InnerException)"
