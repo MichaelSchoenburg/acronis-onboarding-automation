@@ -15,10 +15,10 @@
     https://github.com/MichaelSchoenburg/AcronisOnboarding
 
 .LINK
-    https://developer.acronis.com/doc/account-management/v2/reference/index.html#docs/summary/summary
+    https://developer.acronis.com/doc/outbound/apis/index.html
 
 .LINK
-    https://www.acronis.com/en-us/blog/posts/how-to-personalize-unattended-acronis-agent-installation-on-windows/
+    https://github.com/acronis/acronis-cyber-platform-powershell-examples/
 
 .NOTES
     Author: Michael Schönburg
